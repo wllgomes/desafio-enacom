@@ -1,0 +1,63 @@
+name: Deploy Infrastructure & App
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.5.7
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        terraform_wrapper: false
+
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: terraform init
+
+    - name: Create ECR Repo (Target Apply)
+      working-directory: ./terraform
+      run: terraform apply -target=module.compute.aws_ecr_repository.app_repo -auto-approve
+    
+    - name: Get ECR URL
+      working-directory: ./terraform
+      run: |
+        REPO_URL=$(terraform output -raw repository_url)
+        echo "ECR_REPO_URL=$REPO_URL" >> $GITHUB_ENV
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      working-directory: ./app
+      run: |
+        docker build -t $ECR_REPO_URL:latest .
+        docker push $ECR_REPO_URL:latest
+
+    - name: Terraform Apply (Full)
+      working-directory: ./terraform
+      run: terraform apply -auto-approve
