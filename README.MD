@@ -1,30 +1,32 @@
-# Desafio DevOps - Enacom
+# Desafio DevOps - Enacom 🚀
 
-Solução Serverless para processamento de arquivos (CSV → JSON) utilizando AWS, Terraform e Python.
+Solução **Serverless** para processamento de dados (CSV → JSON) utilizando AWS, Terraform e Python.
 
-## 1. Justificativa Arquitetural
-A escolha pelo **AWS Lambda** (Container Image) em detrimento do AWS Fargate/ECS baseia-se nos critérios de **custo** e **simplicidade** solicitados no desafio:
+## 1. Por que essa Arquitetura?
 
-* **Custo-Eficiência:** O processamento de arquivos é uma tarefa esporádica. O Lambda cobra apenas por milissegundo de execução (custo zero quando ocioso), enquanto o Fargate exigiria provisionamento constante de recursos ou gestão complexa de capacidade.
-* **Simplicidade (KISS):** Elimina a necessidade de gerenciar Clusters, Services e Load Balancers, reduzindo drasticamente a complexidade do código Terraform e a manutenção operacional.
-* **Orientação a Eventos:** Integração nativa e instantânea com o S3 (`s3:ObjectCreated`), ideal para a arquitetura de "Gatilho → Processamento" requerida.
+Para este desafio, optei pelo **AWS Lambda (Container Image)** em vez do ECS Fargate. A decisão foi baseada puramente em eficiência operacional e de custos:
+
+* **Zero Custo em Ociosidade:** Como o processamento é esporádico (orientado a eventos), não faz sentido pagar por containers rodando 24/7 no Fargate. O Lambda cobra apenas pelos milissegundos de execução.
+* **Menos Overhead:** Eliminei a necessidade de gerenciar Clusters, Services ou Load Balancers. A infraestrutura fica mais limpa e o código Terraform muito mais simples de manter (KISS).
+* **Event-Driven:** O trigger nativo do S3 (`s3:ObjectCreated`) conecta o upload ao processamento instantaneamente, sem precisar de filas ou configurações complexas de rede.
 
 ---
 
-## 2. Instruções de Deploy
+## 2. Guia de Deploy
 
-A infraestrutura é provisionada via Terraform. Devido à dependência circular (o Lambda exige a imagem Docker, e o Docker exige o repositório ECR), o deploy é feito em duas etapas.
+Como o Terraform gerencia o Lambda, e o Lambda precisa da imagem Docker, existe uma pequena dependência circular. Para resolver isso de forma elegante, dividi o deploy em etapas.
 
 ### Pré-requisitos
 * AWS CLI configurado (`aws configure`).
 * Terraform e Docker instalados.
 
-### Passo A: Criar Repositório (Bootstrap)
-Crie o ECR primeiro para permitir o upload da imagem:
+### Passo A: Bootstrap (Criar o ECR)
+Primeiro, vamos criar apenas o repositório para ter onde subir a imagem.
 
 ```bash
 cd terraform
 terraform init
+# Sobe apenas o módulo do ECR
 terraform apply -target=module.compute.aws_ecr_repository.app_repo -auto-approve
 
 Build & Push da Imagem
