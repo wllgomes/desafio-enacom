@@ -43,8 +43,6 @@ docker push 632244887993.dkr.ecr.us-east-1.amazonaws.com/enacom-desafio-repo:lat
 
 #Deploy Final
 
-Bash
-
 cd ../terraform
 terraform apply -auto-approve
 
