@@ -1,4 +1,4 @@
-# Desafio DevOps - Enacom 🚀
+# Desafio DevOps - Enacom
 
 Solução **Serverless** para processamento de dados (CSV → JSON) utilizando AWS, Terraform e Python.
 
